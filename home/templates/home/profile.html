@@ -1,0 +1,15 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="pc-container">
+    <h2>My Profile</h2>
+    <p><strong>Username:</strong> {{ profile.user.username }}</p>
+    <p><strong>Email:</strong> {{ profile.user.email }}</p>
+    <p><strong>Home Chapter:</strong> {{ profile.home_chapter }}</p>
+    <p><strong>Emergency Contact:</strong> {{ profile.emergency_contact_name }} ({{ profile.emergency_contact_phone }})</p>
+    
+    <a href="{% url 'edit_profile' %}" class="btn btn-warning">Edit Profile</a>
+</div>
+{% endblock %}

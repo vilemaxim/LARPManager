@@ -1,0 +1,19 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+    <h2>My Characters</h2>
+    <ul>
+        {% for character in characters %}
+            <li>
+                <a href="{% url 'characters:edit_character' character.id %}">{{ character.name }}</a> - 
+                {% if character.approval_status == "approved" %}
+                    <span class="badge bg-success">Approved</span>
+                {% elif character.approval_status == "pending" %}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                {% else %}
+                    <span class="badge bg-danger">Rejected</span>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

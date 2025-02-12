@@ -1,0 +1,41 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Approve Character{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Character Review: {{ character.name }}</h2>
+    <p><strong>Player:</strong> {{ character.user.username }}</p>
+    <p><strong>Status:</strong> {{ character.approval_status }}</p>
+
+    {% if character.approval_status == "pending" %}
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">Reject</button>
+    </form>
+
+    <!-- Rejection Modal -->
+    <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rejectModalLabel">Reject Character</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <label for="rejection_note">Provide a reason:</label>
+                        <textarea name="rejection_note" id="rejection_note" class="form-control"></textarea>
+                        <div class="mt-3">
+                            <button type="submit" name="action" value="reject" class="btn btn-danger">Reject Character</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

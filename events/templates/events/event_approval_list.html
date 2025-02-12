@@ -1,0 +1,98 @@
+{% extends "layouts/base.html" %}
+{% block title %}Event Approvals{% endblock %}
+
+{% block content %}
+<div class="pc-container">
+    <h2>Event Registrations</h2>
+
+    <!-- Pending Approvals -->
+    <h3 class="mt-4">Pending Event Registrations</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Event</th>
+                <th>Registered At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registration in pending_registrations %}
+            <tr>
+                <td>{{ registration.user.username }}</td>
+                <td>{{ registration.event.name }}</td>
+                <td>{{ registration.registered_at|date:"F j, Y, g:i a" }}</td>
+                <td>
+                    <a href="{% url 'events:event_approval_view' registration.id %}" class="btn btn-primary">Review</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-muted">No pending approvals.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Approved Registrations -->
+    <h3 class="mt-4">Approved Event Registrations</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Event</th>
+                <th>Registered At</th>
+                <th>Approval Date</th>
+                <th>Approved By</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registration in approved_registrations %}
+            <tr>
+                <td>{{ registration.user.username }}</td>
+                <td>{{ registration.event.name }}</td>
+                <td>{{ registration.registered_at|date:"F j, Y, g:i a" }}</td>
+                <td>{{ registration.approval_date|date:"F j, Y, g:i a" }}</td>
+                <td>{{ registration.approved_by.username }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-muted">No approved registrations.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Rejected Registrations -->
+    <h3 class="mt-4">Rejected Event Registrations</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Event</th>
+                <th>Registered At</th>
+                <th>Rejection Date</th>
+                <th>Rejected By</th>
+                <th>Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registration in rejected_registrations %}
+            <tr>
+                <td>{{ registration.user.username }}</td>
+                <td>{{ registration.event.name }}</td>
+                <td>{{ registration.registered_at|date:"F j, Y, g:i a" }}</td>
+                <td>{{ registration.rejection_date|date:"F j, Y, g:i a" }}</td>
+                <td>{{ registration.rejected_by.username }}</td>
+                <td>{{ registration.rejection_note }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-muted">No rejected registrations.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Events{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mt-4">Upcoming Events</h2>
+
+    <ul class="list-group">
+        {% for event in events %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <h4><a href="{% url 'events:event_detail' event.id %}">{{ event.name }}</a></h4>
+                    <p>{{ event.start_date|date:"F j, Y" }} - {{ event.end_date|date:"F j, Y" }}</p>
+                </div>
+                <a href="{% url 'events:event_detail' event.id %}" class="btn btn-primary">View Event</a>
+            </li>
+        {% empty %}
+            <p>No upcoming events.</p>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

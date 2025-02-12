@@ -1,0 +1,30 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Character Approval{% endblock %}
+
+{% block content %}
+<div class="pc-container">
+    <h3>Pending Characters</h3>
+    <ul>
+        {% for character in pending_characters %}
+            <li>
+                <a href="{% url 'characters:approval_view' character.id %}">{{ character.name }}</a> - 
+                <span class="badge bg-warning">Pending</span>
+            </li>
+        {% empty %}
+            <p>No pending characters.</p>
+        {% endfor %}
+    </ul>
+
+    <h3>Approved Characters</h3>
+    <ul>
+        {% for character in approved_characters %}
+            <li>
+                {{ character.name }} - <span class="badge bg-success">Approved</span>
+            </li>
+        {% empty %}
+            <p>No approved characters.</p>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

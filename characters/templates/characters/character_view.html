@@ -1,0 +1,64 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}My Characters{% endblock %}
+
+{% block content %}
+<div class="pc-container">
+    <div class="pc-content">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">My Characters</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if characters %}
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Race</th>
+                                        <th>Starting Event</th>
+                                        <th>Approval Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for character in characters %}
+                                        <tr>
+                                            <td>{{ character.name }}</td>
+                                            <td>{{ character.race }}</td>
+                                            <td>{{ character.starting_event }}</td>
+                                            <td>
+                                                {% if character.approval_status == "approved" %}
+                                                    ✅ Approved by {{ character.approved_by.username }} on {{ character.approval_date }}
+                                                {% elif character.approval_status == "pending" %}
+                                                    <span class="badge bg-warning text-dark">Pending</span>
+                                                {% else %}
+                                                    ❌ Not Approved
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if not character.approval_status == "approved" %}
+                                                    <a href="{% url 'characters:edit_character' character.id %}" class="btn btn-warning btn-sm">
+                                                        Modify
+                                                    </a>
+                                                {% else %}
+                                                    <span class="text-muted">Locked</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p>No characters found. <a href="{% url 'characters:create_character' %}">Create one now</a>.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

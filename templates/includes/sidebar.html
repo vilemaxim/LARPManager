@@ -1,4 +1,5 @@
 {% load i18n static admin_berry %}
+{% load group_tags %}
 
 <!-- [ Sidebar Menu ] start -->
 <nav class="pc-sidebar">
@@ -6,7 +7,7 @@
     <div class="m-header">
       <a href="/" class="b-brand">
         <!-- ========   Change your logo from here   ============ -->
-        <img src="{% static 'assets/images/logo-dark.svg' %}" alt="" class="logo logo-lg" />
+        <img src="{% static 'assets/images/logo.png' %}" alt="" class="logo logo-lg" />
       </a>
     </div>
     <div class="navbar-content">
@@ -77,9 +78,76 @@
               {% endif %}
             {% endif %}
           </ul>
+          {% if request.user.is_superuser %}
+          <li class="pc-item">
+            <a href="{% url 'orginal_index' %}" class="pc-link">
+              <span class="pc-micon"><i class="ti ti-dashboard"></i></span>
+              <span class="pc-mtext">Orginal Index</span></a>
+            </li>
+          <li class="pc-item">
+            <a href="{% url 'sample_page' %}" class="pc-link"><span class="pc-micon"><i
+                  class="ti ti-brand-chrome"></i></span><span class="pc-mtext">Sample page</span></a></li>
+          {% endif %}
         </li>
 
+
         {% if request.user.is_authenticated and not request.user.is_superuser %}
+        <li class="pc-item pc-caption">
+          <label>User Pages</label>
+          <i class="ti ti-apps"></i>
+        </li>
+        <li class="pc-item">
+          <a href="{% url 'characters:character_list' %}" class="pc-link">
+              <span class="pc-micon"><i class="ti ti-list"></i></span>
+              <span class="pc-mtext">My Characters</span>
+          </a>
+          <li class="pc-item">
+            <a href="{% url 'events:event_list' %}" class="pc-link">
+                <span class="pc-micon"><i class="ti ti-calendar"></i></span>
+                <span class="pc-mtext">Events</span>
+            </a>
+        </li>
+        {% if request.user|has_group:"Event Administrator" %}
+          <li class="pc-item pc-caption">
+            <label>Event Admin</label>
+            <i class="ti ti-apps"></i>
+          </li>
+              <li class="pc-item">
+                  <a href="{% url 'events:event_approval_list' %}" class="pc-link">
+                      <span class="pc-micon"><i class="ti ti-check"></i></span>
+                      <span class="pc-mtext">Approve Event Registrations</span>
+                  </a>
+              </li>
+        {% endif %}
+      </li>
+        {% endif %}
+        {% if request.user|has_group:"Rules Marshal" %}
+        <li class="pc-item pc-caption">
+          <label>Rule Marshals</label>
+          <i class="ti ti-apps"></i>
+        </li>
+        <li class="pc-item">
+            <a href="{% url 'characters:approval_list' %}" class="pc-link">
+                <span class="pc-micon"><i class="ti ti-check"></i></span>
+                <span class="pc-mtext">Approve Characters</span>
+            </a>
+        </li>
+        {% endif %}
+
+        {% if request.user|has_group:"Tavern Keeper" %}
+        <li class="pc-item pc-caption">
+          <label>Tavern</label>
+          <i class="ti ti-apps"></i>
+        </li>
+        <li class="pc-item">
+            <a href="{% url 'events:event_list' %}" class="pc-link">
+                <span class="pc-micon"><i class="ti ti-beer"></i></span>
+                <span class="pc-mtext">Tavern Events</span>
+            </a>
+        </li>
+        {% endif %}
+
+        {% if request.user.is_superuser %}
         <li class="pc-item pc-caption">
           <label>Elements</label>
           <i class="ti ti-apps"></i>
@@ -109,12 +177,6 @@
               class="pc-micon"><i class="ti ti-vocabulary"></i></span><span class="pc-mtext">DOCS</span></a></li>
       </ul>
       {% endif %}
-      <div class="pc-navbar-card bg-primary rounded">
-        <h4 class="text-white">Django Berry PRO</h4>
-        <p class="text-white opacity-75">API, Charts, Celery</p>
-        <a href="https://appseed.us/product/berry-dashboard-pro/django/"  
-           target="_blank" class="btn btn-light text-primary">See Product</a>
-      </div>
     </div>
   </div>
 </nav>

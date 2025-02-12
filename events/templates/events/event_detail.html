@@ -1,0 +1,121 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Event Details - {{ event.name }}{% endblock %}
+
+{% load group_tags %}
+
+{% block content %}
+<div class="pc-container">
+    <div class="container">
+        <h2 class="mt-4">{{ event.name }}</h2>
+        <p><strong>Description:</strong> {{ event.description }}</p>
+        <p><strong>Location:</strong> {{ event.location }}</p>
+        <p><strong>Start Date:</strong> {{ event.start_date|date:"F j, Y, g:i a" }}</p>
+        <p><strong>End Date:</strong> {{ event.end_date|date:"F j, Y, g:i a" }}</p>
+        <p><strong>Attending Build:</strong> {{ event.attending_build }}</p>
+        <p><strong>Guest Attending Build:</strong> {{ event.traveling_attending_build }}</p>
+        <p><strong>Max Monster Cores:</strong> {{ event.max_monster_cores }}</p>
+    
+        {% if user.is_authenticated %}
+        <h3>Registration Status</h3>
+        {% if registration_status %}
+            <p><strong>Status:</strong> 
+                {% if registration_status == "approved" %}
+                    <span class="badge bg-success">Approved</span>
+                {% elif registration_status == "pending" %}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                {% else %}
+                    <span class="badge bg-danger">Rejected</span>
+                {% endif %}
+            </p>
+        {% else %}
+            <p>You have not registered for this event.</p>
+            <form action="{% url 'events:register_event' event.id %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary">Register</button>
+            </form>
+        {% endif %}
+    {% else %}
+        <p><a href="{% url 'login' %}">Log in</a> to register for this event.</p>
+    {% endif %}
+
+    {% if registration.user == request.user %}
+        <form action="{% url 'events:check_in' event.id %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="user_id" value="{{ registration.user.id }}">
+            <button type="submit" class="btn btn-success btn-sm">Check In</button>
+        </form>
+    {% endif %}
+
+
+        <hr>
+        <p><strong>Check-in Status:</strong> 
+            {% if event.checkin_start %}
+                <span class="badge bg-success">Check-in started on {{ event.checkin_start|date:"F j, Y, g:i a" }}</span>
+            {% else %}
+                <span class="badge bg-warning">Check-in has not started</span>
+            {% endif %}
+        </p>
+        {% if request.user|has_group:"Event Administrator" %}
+            {% if not event.checkin_start %}
+                <form action="{% url 'events:start_checkin' event.id %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">Start Check-ins</button>
+                </form>
+            {% endif %}
+        {% endif %}
+
+        {% if request.user|has_group:"Rules Marshal" or request.user|has_group:"Event Administrator" or request.user|has_group:"Tavern Keeper" %}
+
+            <!-- ✅ List of users who are REGISTERED but NOT YET APPROVED -->
+            {% if pending_registrations %}
+                <h3 class="mt-4">Pending Registrations</h3>
+                <ul class="list-group">
+                    {% for registration in pending_registrations %}
+                        <li class="list-group-item">
+                            <strong>{{ registration.user.username }}</strong> 
+                            <span class="badge bg-warning">Pending Approval</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted">No pending registrations.</p>
+            {% endif %}
+
+            <!-- ✅ List of users who are APPROVED but NOT CHECKED IN -->
+            {% if approved_not_checked_in %}
+                <h3 class="mt-4">Approved but Not Checked In</h3>
+                <ul class="list-group">
+                    {% for registration in approved_not_checked_in %}
+                        <li class="list-group-item">
+                            <strong>{{ registration.user.username }}</strong> 
+                            <span class="badge bg-info">Approved, Not Checked In</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted">No approved users awaiting check-in.</p>
+            {% endif %}
+
+            <!-- ✅ List of users who are CHECKED IN for the event -->
+            {% if attendees %}
+                <h3 class="mt-4">Checked-In Attendees</h3>
+                <ul class="list-group">
+                    {% for registration in attendees %}
+                        <li class="list-group-item">
+                            <strong>{{ registration.user.username }}</strong>
+                            {% if registration.payment_status == "paid" %}
+                                <span class="badge bg-success">Paid</span>
+                            {% else %}
+                                <span class="badge bg-danger">Not Paid</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted">No attendees yet.</p>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

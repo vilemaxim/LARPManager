@@ -1,0 +1,207 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% load crispy_forms_tags %}
+{% load custom_filters %}
+
+{% block title %}Create a New Character{% endblock %}
+
+{% block content %}
+<!-- [ Main Content ] start -->
+<div class="pc-content">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Create a New Character</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="needs-validation" action="{% if character %}{% url 'characters:edit_character' character.id %}{% else %}{% url 'characters:create_character' %}{% endif %}">
+                        {% csrf_token %}
+
+                        <!-- Starting Event -->
+                        <div class="row mb-3">
+                            <div class="col-auto">
+                                {{ form.starting_event|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <!-- Character Details -->
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                {{ form.name|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Player</label>
+                                <div class="form-control bg-light">{{ username }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.race|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <div class="row g-4 mt-3">
+                            <div class="col-md-2">
+                                <label class="form-label">Cultivator Tier</label>
+                                <div class="form-control bg-light text-center" id="cultivator_tier">Mortal (E)</div>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Build Total</label>
+                                <div class="form-control bg-light text-center" id="total_build" data-total-build="{{ character.total_build|default:0 }}">{{ character.total_build|default:0 }}</div>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Unspent Build</label>
+                                <div class="form-control bg-light text-center" id="unspent_build">0</div>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Total Slotted Cores</label>
+                                <div class="form-control bg-light text-center" id="total_slotted_cores">
+                                    {{ total_slotted_cores|default:0 }}
+                                </div>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Unspent Slotted Cores</label>
+                                <div class="form-control bg-light text-center" id="unspent_slotted_cores">
+                                    {{ unspent_slotted_cores }}
+                                </div>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Essence</label>
+                                <input 
+                                    type="number" 
+                                    class="form-control" 
+                                    id="essence" 
+                                    name="essence" 
+                                    min="5" 
+                                    max="{{ max_essence }}" 
+                                    value="{{ existing_essence |default:5 }}" 
+                                    essence-cost-per-point="{{ essence_limits.cost_per_point|default:0 }}"
+                                >
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Armor</label>
+                                <input type="number" class="form-control" id="armor" value="0" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Affinities Section -->
+                        <h2 class="mt-4">Affinities</h2>
+                        <div class="row g-3">
+                            {% for affinity in affinities %}
+                                <div class="col-md-2">
+                                    <label class="form-label fw-bold">{{ affinity.name }}</label>
+                                    <input 
+                                        type="number" 
+                                        id="affinity_{{ affinity.id }}" 
+                                        name="affinity_{{ affinity.id }}" 
+                                        class="form-control affinity-input" 
+                                        value="{{ character_affinities|get_item:affinity.id|default:0 }}"
+                                        min="0" 
+                                        max="6"
+                                    >
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Add Skills Section -->
+                        <h2 class="mt-4">Skills</h2>
+                        <div class="d-flex flex-wrap gap-3">
+                            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addCommonSkillModal">Add Common Skill</button>
+                            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addRaceSkillModal">Add Race Skill</button>
+                            <div id="affinity-skill-buttons" class="d-flex flex-wrap gap-2"></div>
+                        </div>
+
+                        <!-- Skill Sections -->
+                        
+                        <div class="row g-4 mt-3">
+                            <label class="form-label fw-bold">No Passive or At Will</label>
+                            <select id="passive_skills" class="form-select" multiple size="5">
+                                <option value="placeholder">No skills added yet</option>
+                            </select>
+                        </div>
+                        
+                        
+                        <div class="row g-4 mt-3">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Per Encounter</label>
+                                <select id="per_encounter_skills" class="form-select" multiple size="5">
+                                    <option value="placeholder">No skills added yet</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Per Bell</label>
+                                <select id="per_bell_skills" class="form-select" multiple size="5">
+                                    <option value="placeholder">No skills added yet</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Per Day</label>
+                                <select id="per_day_skills" class="form-select" multiple size="5">
+                                    <option value="placeholder">No skills added yet</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Per Weekend</label>
+                                <select id="per_weekend_skills" class="form-select" multiple size="5">
+                                    <option value="placeholder">No skills added yet</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">Create Character</button>
+                        </div>
+                    </form>
+                    <a href="{% url 'characters:print_character_sheet' character.id %}" class="btn btn-secondary">
+                        Print Character Sheet
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Common Skill Modal -->
+<div class="modal fade" id="addCommonSkillModal" tabindex="-1" aria-labelledby="addCommonSkillModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addCommonSkillModalLabel">Add Common Skill</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="common-skills-list">
+                    <p>Skills will be loaded here...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Race Skill Modal -->
+<div class="modal fade" id="addRaceSkillModal" tabindex="-1" aria-labelledby="addRaceSkillModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addRaceSkillModalLabel">Add Race Skill</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="race-skills-list">
+                    <p>No race selected. Please select a race to see available skills.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- [ Main Content ] end -->
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'characters/js/create_character.js' %}"></script>
+{% endblock %}

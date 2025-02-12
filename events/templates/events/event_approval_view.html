@@ -1,0 +1,52 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Approve Registration{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Approve Event Registration</h2>
+    <p><strong>User:</strong> {{ registration.user.username }}</p>
+    <p><strong>Event:</strong> {{ registration.event.name }}</p>
+
+    {% if character %}
+        <p><strong>Current Character:</strong> {{ character.name }}</p>
+        <p><strong>Character Number:</strong> 
+            {% if character.character_number %}
+                {{ character.character_number }}
+            {% else %}
+                <span class="text-danger">Not Assigned</span>
+            {% endif %}
+        </p>
+    {% else %}
+        <p class="text-warning">User does not have an existing character.</p>
+    {% endif %}
+
+    {% if registration.approval_status == "pending" %}
+        <form method="post">
+            {% csrf_token %}
+            <label for="character_number">Character Number (optional):</label>
+            <input type="text" name="character_number" id="character_number" class="form-control" 
+                   placeholder="Leave blank to auto-generate">
+            
+            <button type="submit" name="action" value="approve" class="btn btn-success mt-2">
+                Approve Registration
+            </button>
+        </form>
+
+        <form method="post" class="mt-3">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reject">
+            <label for="rejection_note">Rejection Reason:</label>
+            <textarea name="rejection_note" required class="form-control"></textarea>
+            <button type="submit" class="btn btn-danger mt-2">Reject Registration</button>
+        </form>
+    {% endif %}
+
+    {% if messages %}
+        <div class="mt-3">
+            {% for message in messages %}
+                <div class="alert alert-info">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
