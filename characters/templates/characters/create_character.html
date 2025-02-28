@@ -16,7 +16,7 @@
                     <h4 class="mb-0">Create a New Character</h4>
                 </div>
                 <div class="card-body">
-                    <form method="POST" class="needs-validation" action="{% if character %}{% url 'characters:edit_character' character.id %}{% else %}{% url 'characters:create_character' %}{% endif %}">
+                    <form method="post" onsubmit="return submitCharacterForm(this);">
                         {% csrf_token %}
 
                         <!-- Starting Event -->
@@ -54,13 +54,13 @@
                                 <div class="form-control bg-light text-center" id="unspent_build">0</div>
                             </div>
                             <div class="col-md-1">
-                                <label class="form-label">Total Slotted Cores</label>
+                                <label class="form-label">Total Affinity Point</label>
                                 <div class="form-control bg-light text-center" id="total_slotted_cores">
                                     {{ total_slotted_cores|default:0 }}
                                 </div>
                             </div>
                             <div class="col-md-1">
-                                <label class="form-label">Unspent Slotted Cores</label>
+                                <label class="form-label">Unspent Affinity Point</label>
                                 <div class="form-control bg-light text-center" id="unspent_slotted_cores">
                                     {{ unspent_slotted_cores }}
                                 </div>
@@ -96,6 +96,8 @@
                                         name="affinity_{{ affinity.id }}" 
                                         class="form-control affinity-input" 
                                         value="{{ character_affinities|get_item:affinity.id|default:0 }}"
+                                        data-cost-multiplier="{{ affinity.cost_multiplier }}"
+                                        data-race-affinity="{% if character.race and character.race.starting_affinity == affinity %}true{% else %}false{% endif %}"
                                         min="0" 
                                         max="6"
                                     >
@@ -115,7 +117,7 @@
                         
                         <div class="row g-4 mt-3">
                             <label class="form-label fw-bold">No Passive or At Will</label>
-                            <select id="passive_skills" class="form-select" multiple size="5">
+                            <select id="passive_skills" name="affinity_skills" class="form-select" multiple size="5">
                                 <option value="placeholder">No skills added yet</option>
                             </select>
                         </div>
@@ -124,29 +126,31 @@
                         <div class="row g-4 mt-3">
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">Per Encounter</label>
-                                <select id="per_encounter_skills" class="form-select" multiple size="5">
+                                <select id="per_encounter_skills" name="affinity_skills" class="form-select" multiple size="5">
                                     <option value="placeholder">No skills added yet</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">Per Bell</label>
-                                <select id="per_bell_skills" class="form-select" multiple size="5">
+                                <select id="per_bell_skills" name="affinity_skills" class="form-select" multiple size="5">
                                     <option value="placeholder">No skills added yet</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">Per Day</label>
-                                <select id="per_day_skills" class="form-select" multiple size="5">
+                                <select id="per_day_skills" name="affinity_skills" class="form-select" multiple size="5">
                                     <option value="placeholder">No skills added yet</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">Per Weekend</label>
-                                <select id="per_weekend_skills" class="form-select" multiple size="5">
+                                <select id="per_weekend_skills" name="affinity_skills" class="form-select" multiple size="5">
                                     <option value="placeholder">No skills added yet</option>
                                 </select>
                             </div>
                         </div>
+
+                        <div id="starting_character_points" data-value="{{ starting_character_points }}" style="display: none;"></div>
 
                         <div class="d-grid gap-2 mt-4">
                             <button type="submit" class="btn btn-primary">Create Character</button>
@@ -203,5 +207,6 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'characters/js/create_character.js' %}"></script>
+    <script type="module" src="{% static 'characters/js/create_character.js' %}"></script>
+    {{ existing_skills|json_script:"existing-skills" }}
 {% endblock %}

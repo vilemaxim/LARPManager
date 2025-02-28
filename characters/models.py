@@ -11,15 +11,25 @@ class Characters(models.Model):
     starting_build = models.PositiveIntegerField()
     total_build = models.PositiveIntegerField()
     unspent_build = models.PositiveIntegerField()
-    unspent_affinity = models.PositiveIntegerField()
+    total_affinity = models.PositiveIntegerField() # affinity points
+    unspent_affinity = models.PositiveIntegerField() # affinity points
     armor = models.PositiveIntegerField(default=0)
     starting_event = models.ForeignKey(Event, on_delete=models.SET_NULL, null=True, blank=True, related_name="starting_characters")  
     character_number = models.PositiveIntegerField(unique=True, null=True, blank=True)
 
     common_skills = models.ManyToManyField(CommonSkill, blank=True, related_name='characters_with_common')
     race_skills = models.ManyToManyField(RaceSkill, blank=True, related_name='characters_with_race')
-    affinity_skills = models.ManyToManyField(AffinitySkill, blank=True, related_name='characters_with_affinity')
-    affinities = models.ManyToManyField(Affinity, through='CharactersAffinities', related_name="characters_with_affinity")
+    affinity_skills = models.ManyToManyField(
+        AffinitySkill,
+        through='CharacterAffinitySkill',
+        blank=True,
+        related_name='characters_with_affinity'
+    )
+    affinities = models.ManyToManyField(
+        Affinity, 
+        through='CharactersAffinities', 
+        related_name="characters_with_affinity"
+    )
     # Marshal Area
     approval_date = models.DateTimeField(null=True, blank=True)
     approved_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="approved_characters")
@@ -46,6 +56,7 @@ class Characters(models.Model):
             starting_build=self.starting_build,
             total_build=self.total_build,
             unspent_build=self.unspent_build,
+            total_affinity=self.total_affinity,
             unspent_affinity=self.unspent_affinity,
             armor=self.armor,
             essence=self.essence,
@@ -67,6 +78,7 @@ class CharacterHistory(models.Model):
     starting_build = models.PositiveIntegerField()
     total_build = models.PositiveIntegerField()
     unspent_build = models.PositiveIntegerField()
+    total_affinity = models.PositiveIntegerField()
     unspent_affinity = models.PositiveIntegerField()
     armor = models.PositiveIntegerField()
     essence = models.PositiveIntegerField()
@@ -127,11 +139,9 @@ class CharacterCommonSkill(models.Model):
         return f"{self.character.name} - {self.common_skill.name}"
     
 class CharacterAffinitySkill(models.Model):
-    character = models.ForeignKey(
-        Characters, on_delete=models.CASCADE, related_name='character_affinity_skills'
-    )
+    character = models.ForeignKey(Characters, on_delete=models.CASCADE, related_name='character_affinity_skills')
     affinity_skill = models.ForeignKey(AffinitySkill, on_delete=models.CASCADE)
-    level = models.PositiveIntegerField(default=1)  # Tracks how many levels of the skill are purchased
+    level = models.PositiveIntegerField(default=1)
     cultivator_tier = models.ForeignKey(CultivatorTier, on_delete=models.CASCADE)
 
     def __str__(self):

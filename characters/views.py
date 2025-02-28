@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.utils.timezone import now
 from django.db import transaction, connection, models
-from .models import Characters, ExtraEssences, CultivatorTier, CharactersAffinities
+from .models import Characters, ExtraEssences, CultivatorTier, CharactersAffinities, CharacterAffinitySkill
 from events.models import Event
 from .forms import CharacterCreationForm
 from cultivator_rules.models import Affinity, CommonSkill, RaceSkill, CultivatorTier, AffinitySkill, Essence, Race
@@ -23,6 +23,11 @@ def create_or_edit_character_view(request, character_id=None):
             character = get_object_or_404(Characters, id=character_id, user=request.user)
 
         if request.method == 'POST':
+            # Debug logging
+            print("Raw POST data:", request.POST)
+            print("All POST keys:", list(request.POST.keys()))
+            print("Skill levels:", [k for k in request.POST.keys() if k.startswith('skill_level_')])
+            
             form = CharacterCreationForm(request.POST, instance=character)
 
             if form.is_valid():
@@ -103,53 +108,255 @@ def create_or_edit_character_view(request, character_id=None):
                 # Step 4: Explicitly Save the Character to Ensure the Changes Persist
                 character.save()
  
-                # Handle Skills (Common, Race, Affinity)
+                # Add this debug print
+                print("Received skills:", {
+                    'common_skills': request.POST.getlist('common_skills'),
+                    'race_skills': request.POST.getlist('race_skills'),
+                    'affinity_skills': request.POST.getlist('affinity_skills')
+                })
+
+                # Debug print the POST data
+                print("POST data:", request.POST)
+
+                # Get all affinity skills from the POST data
+                affinity_skill_ids = request.POST.getlist('affinity_skills')
+                print(f"Found affinity skills: {affinity_skill_ids}")
+
+                # Get existing skills
+                existing_skills = {
+                    cas.affinity_skill_id: cas 
+                    for cas in character.character_affinity_skills.all()
+                }
+
+                # Update or create skills
+                for skill_id in affinity_skill_ids:
+                    if skill_id != 'placeholder':
+                        level = int(request.POST.get(f'skill_level_{skill_id}', 1))
+                        print(f"Processing skill {skill_id} with level {level}")
+                        
+                        try:
+                            if skill_id in existing_skills:
+                                # Update existing skill
+                                cas = existing_skills[skill_id]
+                                cas.level = level
+                                cas.save()
+                                print(f"Updated skill {cas.affinity_skill.name} to level {level}")
+                                del existing_skills[skill_id]
+                            else:
+                                # Create new skill
+                                skill = AffinitySkill.objects.get(id=skill_id)
+                                CharacterAffinitySkill.objects.create(
+                                    character=character,
+                                    affinity_skill=skill,
+                                    level=level,
+                                    cultivator_tier=character.cultivator_tier
+                                )
+                                print(f"Created skill {skill.name} with level {level}")
+                        except AffinitySkill.DoesNotExist:
+                            print(f"Could not find affinity skill with ID {skill_id}")
+
+                # Delete any remaining old skills
+                for cas in existing_skills.values():
+                    print(f"Deleting removed skill {cas.affinity_skill.name}")
+                    cas.delete()
+
+                # Verify final state
+                saved_skills = character.character_affinity_skills.all()
+                print("Saved skills:", [(s.affinity_skill.name, s.level) for s in saved_skills])
+
+                # Handle common and race skills
                 character.common_skills.set(CommonSkill.objects.filter(id__in=request.POST.getlist('common_skills')))
                 character.race_skills.set(RaceSkill.objects.filter(id__in=request.POST.getlist('race_skills')))
-                character.affinity_skills.set(AffinitySkill.objects.filter(id__in=request.POST.getlist('affinity_skills')))
 
                 
                 character.save()
                 
-                return redirect('characters:character_list')  # Redirect after saving
+                # Add debug logging
+                if character:
+                    print("Loading skills for character:", character.id)
+                    for char_skill in character.character_affinity_skills.all():
+                        print(f"Found skill: {char_skill.affinity_skill.name} (Level: {char_skill.level})")
+
+                existing_skills = {
+                    'passive': [],
+                    'encounter': [],
+                    'bell': [],
+                    'day': [],
+                    'weekend': []
+                }
+
+                if character:
+                    print(f"Loading skills for character {character.id}")
+                    # Load affinity skills with levels using the through model
+                    for char_skill in character.character_affinity_skills.select_related('affinity_skill').all():
+                        skill = char_skill.affinity_skill
+                        print(f"Found skill: {skill.name} (Level: {char_skill.level})")
+                        print(f"Skill frequency: '{skill.frequency}'")  # Debug the frequency value
+                        
+                        skill_data = {
+                            'id': skill.id,
+                            'name': skill.name,
+                            'build': skill.build,
+                            'frequency': str(skill.frequency),  # Convert to string
+                            'level': char_skill.level,
+                            'max_time_can_buy': skill.max_time_can_buy,
+                            'description': skill.description,
+                            'affinity': skill.affinity.name if skill.affinity else 'N/A'
+                        }
+                        
+                        # Add to appropriate frequency list with more flexible matching
+                        frequency = str(skill.frequency).lower()
+                        print(f"Normalized frequency: '{frequency}'")  # Debug the normalized frequency
+                        
+                        if any(f in frequency for f in ['passive', 'at will', 'n/a']):
+                            print("Adding to passive list")
+                            existing_skills['passive'].append(skill_data)
+                        elif 'encounter' in frequency:
+                            print("Adding to encounter list")
+                            existing_skills['encounter'].append(skill_data)
+                        elif 'bell' in frequency:
+                            print("Adding to bell list")
+                            existing_skills['bell'].append(skill_data)
+                        elif 'daily' in frequency or 'day' in frequency:
+                            print("Adding to day list")
+                            existing_skills['day'].append(skill_data)
+                        elif 'weekend' in frequency:
+                            print("Adding to weekend list")
+                            existing_skills['weekend'].append(skill_data)
+                        else:
+                            print(f"WARNING: Skill {skill.name} has unknown frequency: {frequency}")
+                            # Default to passive if frequency is unknown
+                            existing_skills['passive'].append(skill_data)
+
+                    print("Existing skills data:", existing_skills)
+
+                character_affinities = {}
+                if character:
+                    character_affinities = {a.affinity.id: a.level for a in character.affinity_levels.all()}
+
+                existing_essence = ExtraEssences.objects.filter(
+                    character=character, 
+                    cultivator_tier=character.cultivator_tier
+                ).first()
+
+                # Fetch total slotted cores
+                total_slotted_cores = 0
+                unspent_slotted_cores = 0
+
+                if character:
+                    total_slotted_cores = character.slotted_affinities.aggregate(
+                        models.Sum('slotted_affinity_total')
+                    )['slotted_affinity_total__sum'] or 0
+
+                    unspent_slotted_cores = total_slotted_cores
+
+                return render(request, 'characters/create_character.html', {
+                    'form': form,
+                    'character': character,
+                    'username': request.user.username,
+                    'affinities': Affinity.objects.order_by("name"),
+                    'essence_limits': Essence.objects.first(),
+                    'existing_essence': 5 + (existing_essence.extra_essence) if existing_essence else 5,
+                    'max_essence': 5 + (Essence.objects.first().max_extra_essence_per_tier if Essence.objects.exists() else 0),
+                    'character_affinities': character_affinities,
+                    'total_slotted_cores': total_slotted_cores,
+                    'unspent_slotted_cores': unspent_slotted_cores,
+                    'existing_skills': existing_skills,
+                    'starting_character_points': character.starting_event.starting_character_points if character and character.starting_event else 0,
+                })
             else:
                 print("❌ Form is invalid:", form.errors)
         else:
             form = CharacterCreationForm(instance=character)
             
-       
-        character_affinities = {}
-        if character:
-            character_affinities = {a.affinity.id: a.level for a in character.affinity_levels.all()}
+            # Prepare existing skills data
+            existing_skills = {
+                'passive': [],
+                'encounter': [],
+                'bell': [],
+                'day': [],
+                'weekend': []
+            }
 
-        existing_essence = ExtraEssences.objects.filter(
-            character=character, 
-            cultivator_tier=character.cultivator_tier
-        ).first()
+            if character:
+                print(f"Loading skills for character {character.id}")
+                # Load affinity skills with levels using the through model
+                for char_skill in character.character_affinity_skills.select_related('affinity_skill').all():
+                    skill = char_skill.affinity_skill
+                    print(f"Found skill: {skill.name} (Level: {char_skill.level})")
+                    print(f"Skill frequency: '{skill.frequency}'")  # Debug the frequency value
+                    
+                    skill_data = {
+                        'id': skill.id,
+                        'name': skill.name,
+                        'build': skill.build,
+                        'frequency': str(skill.frequency),  # Convert to string
+                        'level': char_skill.level,
+                        'max_time_can_buy': skill.max_time_can_buy,
+                        'description': skill.description,
+                        'affinity': skill.affinity.name if skill.affinity else 'N/A'
+                    }
+                    
+                    # Add to appropriate frequency list with more flexible matching
+                    frequency = str(skill.frequency).lower()
+                    print(f"Normalized frequency: '{frequency}'")  # Debug the normalized frequency
+                    
+                    if any(f in frequency for f in ['passive', 'at will', 'n/a']):
+                        print("Adding to passive list")
+                        existing_skills['passive'].append(skill_data)
+                    elif 'encounter' in frequency:
+                        print("Adding to encounter list")
+                        existing_skills['encounter'].append(skill_data)
+                    elif 'bell' in frequency:
+                        print("Adding to bell list")
+                        existing_skills['bell'].append(skill_data)
+                    elif 'daily' in frequency or 'day' in frequency:
+                        print("Adding to day list")
+                        existing_skills['day'].append(skill_data)
+                    elif 'weekend' in frequency:
+                        print("Adding to weekend list")
+                        existing_skills['weekend'].append(skill_data)
+                    else:
+                        print(f"WARNING: Skill {skill.name} has unknown frequency: {frequency}")
+                        # Default to passive if frequency is unknown
+                        existing_skills['passive'].append(skill_data)
 
-        # Fetch total slotted cores
-        total_slotted_cores = 0
-        unspent_slotted_cores = 0
+                print("Existing skills data:", existing_skills)
 
-        if character:
-            total_slotted_cores = character.slotted_affinities.aggregate(
-                models.Sum('slotted_affinity_total')
-            )['slotted_affinity_total__sum'] or 0
+            character_affinities = {}
+            if character:
+                character_affinities = {a.affinity.id: a.level for a in character.affinity_levels.all()}
 
-            unspent_slotted_cores = total_slotted_cores
+            existing_essence = ExtraEssences.objects.filter(
+                character=character, 
+                cultivator_tier=character.cultivator_tier
+            ).first()
 
-        return render(request, 'characters/create_character.html', {
-            'form': form,
-            'character': character,
-            'username': request.user.username,
-            'affinities': Affinity.objects.order_by("name"),
-            'essence_limits': Essence.objects.first(),
-            'existing_essence': 5 + (existing_essence.extra_essence) if existing_essence else 5,
-            'max_essence': 5 + (Essence.objects.first().max_extra_essence_per_tier if Essence.objects.exists() else 0),
-            'character_affinities': character_affinities,
-            'total_slotted_cores': total_slotted_cores,
-            'unspent_slotted_cores': unspent_slotted_cores,
-        })
+            # Fetch total slotted cores
+            total_slotted_cores = 0
+            unspent_slotted_cores = 0
+
+            if character:
+                total_slotted_cores = character.slotted_affinities.aggregate(
+                    models.Sum('slotted_affinity_total')
+                )['slotted_affinity_total__sum'] or 0
+
+                unspent_slotted_cores = total_slotted_cores
+
+            return render(request, 'characters/create_character.html', {
+                'form': form,
+                'character': character,
+                'username': request.user.username,
+                'affinities': Affinity.objects.order_by("name"),
+                'essence_limits': Essence.objects.first(),
+                'existing_essence': 5 + (existing_essence.extra_essence) if existing_essence else 5,
+                'max_essence': 5 + (Essence.objects.first().max_extra_essence_per_tier if Essence.objects.exists() else 0),
+                'character_affinities': character_affinities,
+                'total_slotted_cores': total_slotted_cores,
+                'unspent_slotted_cores': unspent_slotted_cores,
+                'existing_skills': existing_skills,
+                'starting_character_points': character.starting_event.starting_character_points if character and character.starting_event else 0,
+            })
 
 @login_required
 def character_list_view(request):
@@ -228,31 +435,36 @@ def get_common_skills(request):
         return JsonResponse({'error': 'Invalid request'}, status=400)
 
 def get_race_skills(request):
-    """Fetch race skills based on the selected race."""
-    if request.method == "GET" and request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        race_id = request.GET.get('race_id')  # Get the race ID from the request
+    if request.method == 'GET':
+        race_id = request.GET.get('race')
+        if not race_id:
+            return JsonResponse({"error": "No race specified"}, status=400)
 
-        if race_id:
-            # Get all skills for the given race
-            race_skills = RaceSkill.objects.filter(race_id=race_id)
-            data = [
-                {
-                    'id': skill.id,
-                    'name': skill.name,
-                    'description': skill.description,
-                    'build': skill.build,
-                    'frequency': skill.frequency.name if skill.frequency else "N/A",
-                    'duration': skill.duration.name if skill.duration else "N/A",
-                }
-                for skill in race_skills
-            ]
-            return JsonResponse({'race_skills': data}, safe=False)
+        try:
+            race = Race.objects.get(id=race_id)
+            race_skills = RaceSkill.objects.filter(race=race)
+            
+            data = {
+                "race_skills": [
+                    {
+                        'id': skill.id,
+                        'name': skill.name,
+                        'description': skill.description,
+                        'build': skill.build,
+                        'frequency': skill.frequency.name if skill.frequency else "N/A",
+                        'max_time_can_buy': 1,  # Default to 1 for race skills
+                    }
+                    for skill in race_skills
+                ]
+            }
+            return JsonResponse(data)
+            
+        except Race.DoesNotExist:
+            return JsonResponse({"error": "Race not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
-        # If no race_id is provided
-        return JsonResponse({'race_skills': []}, safe=False)
-
-    if not race_id or not race_id.isdigit():
-        return JsonResponse({'error': 'Invalid race ID'}, status=400)
+    return JsonResponse({"error": "Invalid request method"}, status=400)
 
 def get_race_starting_affinity(request):
     """
